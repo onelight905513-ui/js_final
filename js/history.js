@@ -19,7 +19,15 @@ const MAX_COUNT   = 20;
  */
 export const loadHistory = () => {
     // 💡 [과제 5] 여기에 코드를 작성하세요.
+  const storedHistory = localStorage.getItem(STORAGE_KEY);
 
+    // 저장된 기록이 없으면 빈 배열 반환
+    if (storedHistory === null) {
+        return [];
+    }
+
+    // 저장된 문자열을 배열로 변환하여 반환
+    return JSON.parse(storedHistory);
 
 
 };
@@ -36,7 +44,14 @@ export const loadHistory = () => {
  */
 export const saveHistory = (history) => {
     // 💡 [과제 6] 여기에 코드를 작성하세요.
+// 앞에서부터 최대 20개까지만 유지
+    const limitedHistory = history.slice(0, MAX_COUNT);
 
+    // 배열을 문자열로 변환하여 저장
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(limitedHistory)
+    );
 
 
 };
@@ -60,7 +75,23 @@ export const saveHistory = (history) => {
  */
 export const addHistory = (expression, result) => {
     // 💡 [과제 7] 여기에 코드를 작성하세요.
+// 1. 기존 기록 가져오기
+    const history = loadHistory();
 
+    // 2. 새 기록을 만들어 배열 맨 앞에 추가
+    const newItem = {
+        expression,
+        result,
+        date: new Date().toLocaleString("ko-KR")
+    };
+
+    const updatedHistory = [newItem, ...history].slice(0, MAX_COUNT);
+
+    // 3. 업데이트된 기록 저장
+    saveHistory(updatedHistory);
+
+    // 4. 업데이트된 배열 반환
+    return updatedHistory;
 
 
 };
@@ -78,7 +109,19 @@ export const addHistory = (expression, result) => {
  */
 export const deleteHistoryItem = (index) => {
     // 💡 [도전 2] 여기에 코드를 작성하세요.
+// 1. 기존 기록 불러오기
+    const history = loadHistory();
 
+    // 2. 해당 인덱스의 기록만 제외
+    const updatedHistory = history.filter(
+        (item, itemIndex) => itemIndex !== index
+    );
+
+    // 3. 변경된 기록 저장
+    saveHistory(updatedHistory);
+
+    // 4. 화면 갱신에 사용할 배열 반환
+    return updatedHistory;
 
 
 };

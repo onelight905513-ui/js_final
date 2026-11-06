@@ -28,7 +28,10 @@
                 <!-- 버튼 그리드 -->
                 <div class="btn-grid">
                     <button class="btn btn-func" data-action="clear">AC</button>
-                    <button class="btn btn-func" data-action="percent">%</button>
+                   <button class="btn btn-func" data-action="percent" type="button"
+    onclick="import('./js/calculator.js').then(module => module.appendPercent())">
+    %
+</button>
                     <button class="btn btn-func" data-action="delete">⌫</button>
                     <button class="btn btn-op" data-op="/">÷</button>
 

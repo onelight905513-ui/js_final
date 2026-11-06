@@ -2,8 +2,13 @@
 //  main.js — 이벤트 연결 및 초기화 (완성 코드 — 수정 금지)
 // ============================================================
 
-import { appendNumber, appendOperator, calculate, deleteLast, clearAll } from './calculator.js';
-import { loadHistory, addHistory, clearHistory } from './history.js';
+import { appendNumber, appendOperator, calculate, deleteLast, clearAll, setExpression } from './calculator.js';
+import {
+    loadHistory,
+    addHistory,
+    clearHistory,
+    deleteHistoryItem
+} from './history.js';
 
 // DOM 요소
 const historyPanel = document.getElementById("historyPanel");
@@ -22,11 +27,21 @@ const renderHistory = (history) => {
         return;
     }
 
-    historyList.innerHTML = history.map(item => `
-        <li class="history-item">
+historyList.innerHTML = history.map((item, index) => `
+        <li class="history-item" style="padding-right: 40px;">
             <div class="hist-expr">${item.expression} =</div>
             <div class="hist-result">${item.result}</div>
             <div class="hist-date">${item.date}</div>
+
+            
+            <button
+                type="button"
+                class="del-item-btn"
+                data-index="${index}"
+                aria-label="이 기록 삭제"
+                title="이 기록 삭제"
+                style="opacity: 1;"
+            >×</button>
         </li>
     `).join("");
 };
@@ -82,6 +97,42 @@ historyBtn.addEventListener("click", () =>
 );
 
 clearAllBtn.addEventListener("click", () => renderHistory(clearHistory()));
+
+historyList.addEventListener("click", (event) => {
+    const item = event.target.closest(".history-item");
+
+    // 기록 항목을 클릭한 경우에만 처리
+    if (!item || !historyList.contains(item)) {
+        return;
+    }
+
+    // ① × 버튼 클릭 → 해당 기록 삭제
+    const deleteButton = event.target.closest(".del-item-btn");
+
+    if (deleteButton) {
+        event.stopPropagation();
+
+        const index = Number(deleteButton.dataset.index);
+        const updatedHistory = deleteHistoryItem(index);
+
+        renderHistory(updatedHistory);
+
+        // 삭제한 결과를 계산기에 불러오지 않도록 종료
+        return;
+    }
+
+    // ② 기록 클릭 → 해당 결과 불러오기
+    const result = item.querySelector(".hist-result");
+
+    if (result) {
+        setExpression(result.textContent.trim());
+
+        // 이전 연산자 버튼의 선택 표시 해제
+        document.querySelectorAll(".btn-op").forEach(button => {
+            button.classList.remove("active");
+        });
+    }
+});
 
 // ── 다크모드 ─────────────────────────────────────────────────
 const applyTheme = (dark) => {

@@ -39,6 +39,30 @@ export const appendNumber = (num) => {
     //         (예: "3.14" 상태에서 "." 을 눌러도 무시)
     //         힌트: expression.split(/[+\-*\/]/) 로 숫자 구간을 나눌 수 있습니다.
 
+   // 계산 직후 숫자를 입력하면 새로운 계산 시작
+    if (justCalculated) {
+        expression = "";
+        subDisplay.textContent = "";
+    }
+
+    // 연산자를 기준으로 나누어 현재 숫자 구간 확인
+    const currentNumber = expression.split(/[+\-*\/]/).pop();
+
+    if (num === ".") {
+        // 현재 숫자에 이미 소수점이 있으면 추가하지 않음
+        if (currentNumber.includes(".")) {
+            return;
+        }
+
+        // 처음이나 연산자 뒤에서는 "0."으로 입력
+        expression += currentNumber === "" ? "0." : ".";
+    } else if (currentNumber === "0") {
+        // 앞자리 0을 새 숫자로 대체
+        // 예: "0" → "5", "3+0" → "3+5"
+        expression = expression.slice(0, -1) + num;
+    } else {
+        expression += num;
+    }
 
 
     justCalculated = false;
@@ -70,7 +94,20 @@ export const appendOperator = (op) => {
     // 힌트: 문자열의 마지막 문자 → expression[expression.length - 1]
     // 힌트: 마지막 문자 제거    → expression.slice(0, -1)
 
+  // 수식이 비어 있으면 연산자 입력 무시
+    if (expression === "") {
+        return;
+    }
 
+    const lastChar = expression[expression.length - 1];
+
+    if ("+-*/".includes(lastChar)) {
+        // 마지막 문자가 연산자이면 새 연산자로 교체
+        expression = expression.slice(0, -1) + op;
+    } else {
+        // 계산 직후에도 기존 결과를 유지하고 연산자 추가
+        expression += op;
+    }
 
     justCalculated = false;
     updateDisplay();
@@ -116,7 +153,73 @@ export const calculate = () => {
     // 규칙 4. 반환값: { expression: 수식, result: 결과값 문자열 }
     //         (main.js에서 기록 저장에 사용합니다)
 
+ // 비어 있거나 연산자로 끝나는 수식은 계산하지 않음
+    if (expression === "" || /[+\-*\/]$/.test(expression)) {
+        return null;
+    }
 
+    // 계산 결과로 변경하기 전에 원래 수식 저장
+    const originalExpression = expression;
+
+    // 일반 숫자와 지수 표기 숫자 허용
+    // 예: 12, 0.5, 3., 1e-7
+    const numberPattern = String.raw`(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?`;
+
+    // 숫자와 사칙연산으로 이루어진 수식인지 확인
+    const validExpression = new RegExp(
+        `^[+-]?${numberPattern}(?:[+*/-]${numberPattern})*$`,
+        "i"
+    );
+
+    if (!validExpression.test(expression)) {
+        subDisplay.textContent = "올바른 수식을 입력하세요.";
+        return null;
+    }
+
+    // 나눗셈 뒤에 있는 숫자가 실제로 0인지 확인
+    const divisionPattern = new RegExp(
+        `/(${numberPattern})`,
+        "gi"
+    );
+
+    for (const match of expression.matchAll(divisionPattern)) {
+        if (Number(match[1]) === 0) {
+            subDisplay.textContent = "0으로 나눌 수 없습니다.";
+            return null;
+        }
+    }
+
+    try {
+        // 힌트의 Function을 사용하여 계산
+        const result = Function(
+            '"use strict"; return (' + expression + ')'
+        )();
+
+        if (!Number.isFinite(result)) {
+            subDisplay.textContent = "계산 가능한 범위를 벗어났습니다.";
+            return null;
+        }
+
+        // 힌트에 따라 소수점 아래 10자리로 반올림하여 오차 정리
+        const resultString = parseFloat(result.toFixed(10)).toString();
+
+        // 이전 수식과 결과 표시
+        subDisplay.textContent = originalExpression + " =";
+        expression = resultString;
+        justCalculated = true;
+
+        // 결과 표시 및 글자 크기 조정
+        updateDisplay();
+
+        // 기록 저장에 사용할 객체 반환
+        return {
+            expression: originalExpression,
+            result: resultString
+        };
+    } catch (error) {
+        subDisplay.textContent = "올바른 수식을 입력하세요.";
+        return null;
+    }
 
 };
 
@@ -133,7 +236,14 @@ export const deleteLast = () => {
     // 규칙 2. 그렇지 않으면 expression의 마지막 글자 하나만 제거
     //         (힌트: expression.slice(0, -1))
 
+ if (justCalculated) {
+        // 계산 직후 삭제 버튼을 누르면 전체 초기화
+        clearAll();
+        return;
+    }
 
+    // 마지막 문자 하나 삭제
+    expression = expression.slice(0, -1);
 
     updateDisplay();
 };
@@ -153,7 +263,37 @@ export const deleteLast = () => {
 export const appendPercent = () => {
     // 💡 [도전 1] 여기에 코드를 작성하세요.
 
+      if (expression === "" || /[+\-*/]$/.test(expression)) {
+        return;
+    }
 
+    // 지수 표기(예: 1e-7)의 부호는 연산자에서 제외
+    const operatorSearch = expression.replace(/e[+-]/gi, "e_");
+
+    // 마지막 연산자 위치 찾기
+    const lastOperatorIndex = Math.max(
+        operatorSearch.lastIndexOf("+"),
+        operatorSearch.lastIndexOf("-"),
+        operatorSearch.lastIndexOf("*"),
+        operatorSearch.lastIndexOf("/")
+    );
+
+    // 마지막 숫자를 100으로 나누기
+    const numStr = expression.slice(lastOperatorIndex + 1);
+    const percentValue = parseFloat(numStr) / 100;
+
+    if (!Number.isFinite(percentValue)) {
+        return;
+    }
+
+    // 앞의 수식은 유지하고 마지막 숫자만 교체
+    expression =
+        expression.slice(0, lastOperatorIndex + 1) +
+        Number(percentValue.toPrecision(15)).toString();
+
+    justCalculated = false;
+    subDisplay.textContent = "";
+    updateDisplay();
 
 };
 
@@ -167,7 +307,15 @@ export const appendPercent = () => {
  */
 export const setExpression = (value) => {
     // 💡 [도전 3] 여기에 코드를 작성하세요.
+ // 기록의 결과를 문자열로 불러오기
+  expression = String(value);
 
+    // 이후 숫자를 누르면 새 계산 시작,
+    // 연산자를 누르면 불러온 결과에 이어서 계산
+    justCalculated = true;
+
+    subDisplay.textContent = "";
+    updateDisplay();
 
 
 };
